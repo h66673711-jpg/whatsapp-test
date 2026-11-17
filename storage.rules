@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signed() { return request.auth != null && request.auth.token.email_verified == true; }
+    match /avatars/{uid} {
+      allow read: if signed();
+      allow write: if signed() && request.auth.uid == uid && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /chats/{chatId}/{file} {
+      allow read: if signed() && request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.members;
+      allow write: if signed() && request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.members
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|audio/.*|video/.*');
+    }
+  }
+}
